@@ -537,11 +537,7 @@ class Front_cart extends Public_Controller
 	public function callback($gateway = NULL, $order_id = NULL)
 	{
 
-		if( $gateway == NULL or $order_id == NULL )
-		{
-			show_404();
-		}
-		elseif( $this->gateways->is_enabled($gateway) )
+		if ($this->gateways->is_enabled($gateway) AND $gateway != NULL AND $order_id != NULL)
 		{
 
 			$this->merchant->load($gateway, $this->gateways->settings($gateway));
@@ -549,21 +545,14 @@ class Front_cart extends Public_Controller
 			
 			$processed = $this->db->get_where('firesale_transactions', array('txn_id' => $response->txn_id, 'status' => $response->status))->num_rows();
 			
-			if( !$processed )
+
+			$this->db->insert('firesale_transactions', array('order_id' => $order_id, 'txn_id' => $response->txn_id, 'amount' => $response->amount, 'message' => $response->message, 'status' => $response->status));
+			
+			if ($response->status == 'authorized')
 			{
-				$this->db->insert('firesale_transactions', array('order_id' => $order_id, 'txn_id' => $response->txn_id, 'amount' => $response->amount, 'message' => $response->message, 'status' => $response->status));
-				
-				if ($response->status == 'authorized')
-				{
-					$this->db->update('firesale_orders', array('status' => 'paid'), array('id' => $order_id));
-				}
-				
+				$this->db->update('firesale_orders', array('status' => 'paid'), array('id' => $order_id));
 			}
-	
-		}
-		else
-		{
-			show_404();
+				
 		}
 
 	}
