@@ -2,7 +2,7 @@
 
 class Module_Firesale extends Module {
 	
-	public $version = '0.9.3';
+	public $version = '0.9.7';
 	public $language_file = 'firesale/firesale';
 	
 	public function __construct()
@@ -18,10 +18,12 @@ class Module_Firesale extends Module {
 
 		$info = array(
 			'name' => array(
-				'en' => 'FireSALE'
+				'en' => 'FireSALE',
+				'it' => 'FireSALE'
 			),
 			'description' => array(
-				'en' => 'The lightweight eCommerce platform for PyroCMS'
+				'en' => 'The lightweight eCommerce platform for PyroCMS',
+				'it' => 'Una leggera piattaforma eCommerce per PyroCMS'
 			),
 			'frontend'		=> TRUE,
 			'backend'		=> TRUE,
@@ -114,6 +116,7 @@ class Module_Firesale extends Module {
 		// Load required items
 		$this->load->driver('Streams');
 		$this->load->language('firesale/firesale');
+		$this->load->model('firesale/categories_m');
 		$this->load->model('firesale/products_m');
 		$this->load->library('files/files');
 		
@@ -169,7 +172,7 @@ class Module_Firesale extends Module {
 		$fields[] = array('name' => 'lang:firesale:label_id', 'slug' => 'code', 'extra' => array('max_length' => 64), 'unique' => TRUE);
 		$fields[] = array('name' => 'lang:firesale:label_title', 'slug' => 'title', 'type' => 'text', 'title_column' => TRUE, 'extra' => array('max_length' => 255), 'unique' => TRUE);
 		$fields[] = array('name' => 'lang:firesale:label_slug', 'slug' => 'slug', 'type' => 'slug', 'extra' => array('max_length' => 255, 'slug_field' => 'title', 'space_type' => '-'));
-		$fields[] = array('name' => 'lang:firesale:label_category', 'slug' => 'category', 'type' => 'relationship', 'extra' => array('choose_stream' => $categories->id));
+		$fields[] = array('name' => 'lang:firesale:label_category', 'slug' => 'category', 'type' => 'multiple', 'extra' => array('choose_stream' => $categories->id));
 		$fields[] = array('name' => 'lang:firesale:label_rrp', 'slug' => 'rrp', 'type' => 'text', 'extra' => array('max_length' => 10, 'pattern' => '^\d+(?:,\d{3})*\.\d{2}$'));
 		$fields[] = array('name' => 'lang:firesale:label_rrp_tax', 'slug' => 'rrp_tax', 'type' => 'text', 'extra' => array('max_length' => 10, 'pattern' => '^\d+(?:,\d{3})*\.\d{2}$'));
 		$fields[] = array('name' => 'lang:firesale:label_price', 'slug' => 'price', 'type' => 'text', 'extra' => array('max_length' => 10, 'pattern' => '^\d+(?:,\d{3})*\.\d{2}$'));
@@ -256,7 +259,7 @@ class Module_Firesale extends Module {
 		$fields[] = array('name' => 'lang:firesale:label_city', 'slug' => 'city', 'extra' => array('max_length' => 255));
 		$fields[] = array('name' => 'lang:firesale:label_county', 'slug' => 'county', 'extra' => array('max_length' => 255));
 		$fields[] = array('name' => 'lang:firesale:label_postcode', 'slug' => 'postcode', 'extra' => array('max_length' => 40));
-		$fields[] = array('name' => 'lang:firesale:label_country', 'slug' => 'country', 'extra' => array('max_length' => 255));
+		$fields[] = array('name' => 'lang:firesale:label_country', 'slug' => 'country', 'type' => 'country');
 
 		// Combine
 		foreach( $fields AS $key => $field ) { $fields[$key] = array_merge($template, $field); }
@@ -348,6 +351,7 @@ class Module_Firesale extends Module {
 	
 		// Load required items
 		$this->load->driver('Streams');
+		$this->load->model('firesale/categories_m');
 		$this->load->model('firesale/products_m');
 		$this->load->library('files/files');
 	
@@ -373,6 +377,7 @@ class Module_Firesale extends Module {
 		$this->streams->utilities->remove_namespace('firesale_orders_items');
 		
 		// Drop the payment gateway tables
+		$this->dbforge->drop_table('firesale_products_firesale_categories'); // Streams doesn't auto-remove it =/
 		$this->dbforge->drop_table('firesale_gateway_settings');
 		$this->dbforge->drop_table('firesale_order_items');
 
@@ -382,6 +387,10 @@ class Module_Firesale extends Module {
 
 	public function upgrade($old_version)
 	{
+
+		// Add settings
+		$this->settings('remove');
+		$this->settings('add');
 
 		return TRUE;
 	}
@@ -406,6 +415,20 @@ class Module_Firesale extends Module {
 			'description' 	=> 'The percentage of tax to be applied to the products',
 			'default'		=> '20',
 			'value'			=> '20',
+			'type' 			=> 'text',
+			'options'		=> '',
+			'is_required' 	=> 1,
+			'is_gui'		=> 1,
+			'module' 		=> 'firesale'
+		);
+
+		// Products Per Page
+		$settings[] = array(
+			'slug' 		  	=> 'firesale_perpage',
+			'title' 	  	=> 'Products per Page',
+			'description' 	=> 'The number of products to be displayed on category and search result pages',
+			'default'		=> '15',
+			'value'			=> '15',
 			'type' 			=> 'text',
 			'options'		=> '',
 			'is_required' 	=> 1,

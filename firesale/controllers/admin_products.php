@@ -34,40 +34,32 @@ class Admin_products extends Admin_Controller
 
 	}
 
-	public function index($category = 0, $start = 0)
+	public function index($type = 'na', $value = 'na', $start = 0)
 	{
 
-		// Set query paramaters
-		$params	 = array(
-					'stream' 	=> 'firesale_products',
-					'namespace'	=> 'firesale_products',
-					'limit'		=> $this->perpage,
-					'offset'	=> $start,
-					'order_by'	=> 'id',
-					'sort'		=> 'desc'
-				   );
-		
-		// Get by category if set
-		if( $category > 0 )
+		// Get filter if set
+		if( $type != 'na' AND $value != 'na' )
 		{
-			$params['where'] = 'category=' . $category;
+			$filter   = array($type => $value);
+			$products = $this->products_m->get_products($filter, $start, $this->perpage);
+			$this->data->$type = $value;
 		}
-		
-		// Get entries		
-		$products  = $this->streams->entries->get_entries($params);
-	
-		// Assign variables
-		$this->data->products 	= $products['entries'];
-		$this->data->count		= $products['total'];
-		$this->data->pagination = $product['pagination'];
-		$this->data->categories = array(0 => lang('firesale:label_filtersel')) + $this->categories_m->build_dropdown();
-		$this->data->category	= $category;
+		else
+		{
+			$products = $this->products_m->get_products(array(), $start, $this->perpage);
+		}
 
-		// Get initial product image
-		foreach( $this->data->products AS $key => $product )
+		// Build product data
+		foreach( $products AS $key => $product )
 		{
-			$this->data->products[$key]['image'] = $this->products_m->get_single_image($product['id']);
+			$products[$key] = $this->products_m->get_product($product['id']);
 		}
+			
+		// Assign variables
+		$this->data->products 	= $products;
+		$this->data->count		= count($this->products_m->get_products(( isset($filter) ? $filter : array() ), 0, 0)) OR 0;
+		$this->data->pagination = create_pagination('/admin/firesale/products/' . ( $type != 'na' ? $type : 'na' ) . '/' . ( $value != 'na' ? $value : 'na' ) . '/', $this->data->count, $this->perpage, 6);
+		$this->data->categories = array(0 => lang('firesale:label_filtersel')) + $this->categories_m->dropdown_values();
 
 		// Build the page
 		$this->template->title(lang('firesale:title') . ' ' . lang('firesale:sections:products'))
@@ -89,6 +81,10 @@ class Admin_products extends Admin_Controller
 						'success_message'	=> lang('firesale:prod_' . ( $id == NULL ? 'add' : 'edit' ) . '_success'),
 						'error_message'		=> lang('firesale:prod_' . ( $id == NULL ? 'add' : 'edit' ) . '_error')
 					  );
+
+			// Manually update categories
+			if( $id !== NULL )
+				$this->products_m->update_categories($id, $this->stream->id, $input['category']);
 		
 		}
 		else
@@ -103,10 +99,9 @@ class Admin_products extends Admin_Controller
 
 		// Assign variables
 		if( $row !== NULL ) { $this->data = $row; }
-		$this->data->controller =& $this;
-		$this->data->id			=  $id;
-		$this->data->fields     =  $this->products_m->fields_to_tabs($fields, $this->tabs);
-		$this->data->tabs		=  array_reverse(array_keys($this->data->fields));
+		$this->data->id		=  $id;
+		$this->data->fields =  $this->products_m->fields_to_tabs($fields, $this->tabs);
+		$this->data->tabs	=  array_reverse(array_keys($this->data->fields));
 		
 		// Get current images
 		if( $row != FALSE )
@@ -248,7 +243,7 @@ class Admin_products extends Admin_Controller
 	{
 		if( $this->input->is_ajax_request() )
 		{
-			echo json_encode($this->products_m->get_product_by_id($id));
+			echo json_encode($this->products_m->get_product($id));
 			exit();
 		}
 	}

@@ -3,6 +3,12 @@
 class Plugin_Firesale extends Plugin
 {
 
+    public function __construct()
+    {
+		$this->load->model('categories_m');
+		$this->load->model('products_m');
+	}
+
 	public function module_installed()
 	{
 	
@@ -65,6 +71,55 @@ class Plugin_Firesale extends Plugin
 		return $this->categories($limit, $category, $order_by, $order_dir);
 	}
 
+	public function products()
+	{
+
+		// Variables
+		$limit	   = $this->attribute('limit', 10);
+		$where     = $this->attribute('where', NULL);
+		$order_by  = $this->attribute('order-by', 'id');
+		$order_dir = $this->attribute('order-dir', 'desc');
+
+		// Build query
+		$query = $this->db->select('id')
+						  ->from('firesale_products')
+						  ->order_by($order_by, $order_dir)
+						  ->limit($limit);
+
+		if( $where != NULL )
+		{
+			foreach( explode('|', $where) AS $where )
+			{
+				list($field, $val) = explode('=', $where);
+				$query->where(trim($field), trim($val));
+			}
+		}
+
+		// Run query
+		$results = $query->get();
+
+		// Check for results
+		if( $results->num_rows() )
+		{
+
+			// Get results
+			$results  = $results->result_array();
+			$products = array();
+
+			// Get products
+			foreach( $results AS $result )
+			{
+				$products[] = $this->products_m->get_product($result['id']);
+			}
+
+			// Return
+			return $products;
+		}
+
+		// Nothing?
+		return array();
+	}
+
 	public function cart()
 	{
 	
@@ -77,27 +132,28 @@ class Plugin_Firesale extends Plugin
 		$data->sub 	 	= 0;
 		$data->tax 	 	= 0;
 		$data->total 	= 0;
+		$data->count 	= 0;
 		$data->products = array();
 		
 		// Loop products in cart
 		foreach( $this->cart->contents() as $id => $item )
 		{
 		
-			$product = $this->products_m->get_product_by_id($item['id']);
+			$product = $this->products_m->get_product($item['id']);
 			
 			if( $product !== FALSE )
 			{
 			
 				$data->products[] = array(
 					'id'		=> $id,
-					'code' 		=> $product->code,
-					'slug'		=> $product->slug,
+					'code' 		=> $product['code'],
+					'slug'		=> $product['slug'],
 					'quantity'	=> $item['qty'],
 					'name'		=> $item['name']
 				);
 				
 				$data->total += $item['subtotal'];
-			
+				$data->count += $item['qty'];
 			}
 		
 		}
@@ -121,13 +177,30 @@ class Plugin_Firesale extends Plugin
 		{
 
 			// Variables
-			$data = array();
-			$data['products'] = $this->db->query('SELECT SUM(qty) AS `count`, p.`id`, p.`title`, p.`slug`
-												  FROM `' . SITE_REF . '_firesale_orders_items` AS i
-												  INNER JOIN `' . SITE_REF . '_firesale_products` AS p ON p.`id` = i.`product_id`
-												  GROUP BY i.`product_id`
-												  ORDER BY `count` DESC
-												  LIMIT 10')->result_array();
+			$data     = array('total_sales' => 0, 'total_count' => 0);
+			$sales    = array();
+			$count    = array();
+			$currency = $this->settings->get('currency');
+			$products = $this->db->query('SELECT SUM(`qty`) AS `count`, SUM(`qty` * `price`) AS `sales`, date_format(`created`, "%Y-%m") AS `month`
+										  FROM `' . SITE_REF . '_firesale_orders_items`
+										  GROUP BY `month`
+										  ORDER BY `month` ASC
+										  LIMIT 12')->result_array();
+
+			// Build JSON
+			foreach( $products AS $product )
+			{
+				$sales[] = array(strtotime($product['month']) . '000', round($product['sales'], 2));
+				$count[] = array(strtotime($product['month']) . '000', (int)$product['count']);
+				$data['total_sales'] += $product['sales'];
+				$data['total_count'] += $product['count'];
+			}
+			
+			// Assign data
+			$data['sales'] 		 = json_encode($sales);
+			$data['count'] 		 = json_encode($count);
+			$data['currency']	 = $currency;
+			$data['total_sales'] = $currency . number_format($data['total_sales'], 2);
 
 			// Return view
 			return $this->module_view('firesale', 'admin/dashboard/productsales', $data, true);

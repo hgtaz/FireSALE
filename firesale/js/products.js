@@ -1,7 +1,7 @@
 $(function(){
 
 	// Dashboard
-	$('#filter').change(function() { if( $(this).val() > 0 ) { window.location = '/admin/firesale/products/' + $(this).val(); } });
+	$('.filter').change(function() { if( $(this).val() > 0 ) { window.location = '/admin/firesale/products/' + $(this).attr('id').replace('filter-', '') + '/' + $(this).val(); } });
 	
 	$('.quickedit').click(function() {
 	
@@ -67,6 +67,9 @@ $(function(){
 			});
 		}
 	});
+
+	// Categories "fix"
+	$('#category_list_2 li').each(function() { if( $('#category').val().indexOf($(this).attr('id')) == -1 ) { $(this).remove(); }});
 	
 });
 	

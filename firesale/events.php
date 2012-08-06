@@ -31,7 +31,7 @@ class Events_Firesale
 	
 	public function product_viewed($data)
 	{
-		
+
 		$this->_run_firesale_events('product_viewed', $data);
 	}
 	
@@ -48,7 +48,7 @@ class Events_Firesale
 	
 	public function _run_firesale_events($name, $data)
 	{
-	
+		
 		if( isset($this->ci->firesale->events[$name]) )
 		{
 			foreach( $this->ci->firesale->events[$name] AS $event )

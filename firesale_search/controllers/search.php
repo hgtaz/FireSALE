@@ -7,7 +7,7 @@ class Search extends Public_Controller {
     private $validation_rules = array();
 	
 	public $section = "search";
-	public $perpage = 20;
+	public $perpage = 15;
 
     public function __construct()
     {
@@ -19,6 +19,9 @@ class Search extends Public_Controller {
 		$this->load->model('firesale/products_m');
 		$this->load->model('search_m');
 		$this->load->helper('firesale/general');
+
+		// Get perpage option
+		$this->perpage = $this->settings->get('firesale_perpage');
 
     }
     
@@ -52,7 +55,7 @@ class Search extends Public_Controller {
 			$this->search_m->update_terms($term);
 
 			// Check for category match first
-			if( $is_cat = $this->search_m->check_category($term) )
+			if( $category != 'all' AND $is_cat = $this->search_m->check_category($term) )
 			{
 				// Send there if we got exact match
 				redirect('/category/' . $is_cat);
@@ -113,7 +116,7 @@ class Search extends Public_Controller {
 						   ->title(sprintf(lang('firesale:sections:search' . ( $term != NUll ? '_results' : '' )), $term))
 						   ->build('search', $this->data);	
 		}
-	
+
     }
 
 }
