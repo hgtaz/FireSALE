@@ -130,7 +130,7 @@ class Products_m extends MY_Model {
 					'where'		=> ( is_numeric($id_slug) ? 'id = ' : 'slug = ' ) . "'{$id_slug}' AND status = 1",
 					'limit'		=> '1',
 					'order_by'	=> 'id',
-					'sort'		=> 'desc'
+					'sort'		=> 'asc'
 				   );
 		
 		// Get entries		
@@ -329,8 +329,12 @@ class Products_m extends MY_Model {
 		// Loop and insert
 		for( $i = 0; $i < count($categories); $i++ )
 		{
-			$data = array('row_id' => $product_id, 'firesale_products_id' => $stream_id, 'firesale_categories_id' => trim($categories[$i]));
-			$this->db->insert('default_firesale_products_firesale_categories', $data);
+			$cat = trim($categories[$i]);
+			if( strlen($cat) > 0 )
+			{
+				$data = array('row_id' => $product_id, 'firesale_products_id' => $stream_id, 'firesale_categories_id' => $cat);
+				$this->db->insert('default_firesale_products_firesale_categories', $data);
+			}
 		}
 
 	}
